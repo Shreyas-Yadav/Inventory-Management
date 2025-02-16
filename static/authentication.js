@@ -117,7 +117,7 @@ async function submitLoginForm(e) {
             formData.append('username', emailInput.value);
             formData.append('password', passwordInput.value);
 
-            const response = await fetch(`${API_BASE_URL}/token`, {
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 body: formData
             });
@@ -127,13 +127,8 @@ async function submitLoginForm(e) {
                 throw new Error(errorData.detail || 'Login failed');
             }
 
-            const data = await response.json();
-            // Store the access token
-            localStorage.setItem('access_token', data.access_token);
-            
-            // Redirect or update UI to show logged-in state
-            alert('Login successful!');
-            // You might want to redirect to a dashboard or home page here
+            // Redirect to /index after successful login
+            window.location.href = '/index';
         } catch (error) {
             showError(emailInput, error.message);
         }

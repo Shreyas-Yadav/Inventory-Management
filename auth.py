@@ -1,22 +1,15 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 import crud
 import database, models, schemas
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
-from security import pwd_context, verify_password, get_password_hash
+from security import verify_password
 
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# def verify_password(plain_password, hashed_password):
-# return pwd_context.verify(plain_password, hashed_password)
-
-# def get_password_hash(password):
-# return pwd_context.hash(password)
+# Update token URL to use /login instead of /token
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     user = await crud.get_user_by_email(db, email)
@@ -34,12 +27,29 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(database.get_db)):
+async def get_current_user(
+    request: Request,
+    db: AsyncSession = Depends(database.get_db)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # Try to get token from cookies first
+    access_token = request.cookies.get("access_token")
+    if access_token and access_token.startswith("Bearer "):
+        token = access_token[len("Bearer "):]
+    else:
+        # Fallback to header if cookie is not present
+        authorization: str = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[len("Bearer "):]
+        else:
+            # If no token is found, raise an exception
+            raise credentials_exception
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")

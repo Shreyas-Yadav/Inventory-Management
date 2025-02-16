@@ -81,3 +81,10 @@ async def handle_unauthorized(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     return exc
+
+# Logout endpoint
+@app.post("/logout")
+async def logout(response: RedirectResponse):
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(key="access_token")
+    return response
